@@ -164,6 +164,7 @@ html,body{min-height:100%;background:var(--bg);color:var(--text);font-family:'Nu
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         </div>
         <div class="icon-btn" onclick="showRanks()">🏆</div>
+        <div class="icon-btn" onclick="showResetConfirm()">🔄</div>
         <div class="icon-btn" onclick="toggleTheme()">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/></svg>
         </div>
@@ -258,6 +259,19 @@ html,body{min-height:100%;background:var(--bg);color:var(--text);font-family:'Nu
     <div class="ranks-title">🏆 Rank Ladder</div>
     <div id="ranksList"></div>
     <button class="close-ranks" onclick="closeRanks()">Close</button>
+  </div>
+</div>
+
+<!-- Reset Modal -->
+<div class="ranks-overlay" id="resetOverlay" onclick="if(event.target===this)closeReset()">
+  <div class="ranks-modal" style="text-align:center">
+    <div style="font-size:32px;margin-bottom:12px">⚠️</div>
+    <div class="ranks-title">Reset Progress?</div>
+    <p style="font-size:13px;color:var(--text2);margin-bottom:1.5rem;line-height:1.6">This will delete all your tasks, XP, level and streak. You will go back to Level 1. This cannot be undone.</p>
+    <div style="display:flex;gap:8px">
+      <button class="close-ranks" onclick="closeReset()" style="margin-top:0">Cancel</button>
+      <button class="close-ranks" onclick="confirmReset()" style="margin-top:0;background:#3f1505;color:#F0997B;border-color:#D85A30">Yes, reset everything</button>
+    </div>
   </div>
 </div>
 
@@ -472,12 +486,10 @@ async function toggleDone(id, el){
   if(t.done && !wasDone && !awardedTasks.has(id)){ awardedTasks.add(id); awardXP(XP_MAP[t.priority]||20, el); checkStreak(); }
   if(!t.done && awardedTasks.has(id)){ awardedTasks.delete(id); removeXP(XP_MAP[t.priority]||20, el); }
   if(t.done && t.recurring){
-    setTimeout(async()=>{
-      t.done=false;
-      const d=new Date(); d.setDate(d.getDate()+(t.recurring==='daily'?1:7));
-      t.due=d.toISOString().split('T')[0];
-      await saveTask(t);
-    },1500);
+    const d=new Date(); d.setDate(d.getDate()+(t.recurring==='daily'?1:7));
+    t.due=d.toISOString().split('T')[0];
+    await saveTask(t);
+    return;
   }
   await saveTask(t);
 }
@@ -522,6 +534,23 @@ function showRanks(){
   document.getElementById('ranksOverlay').classList.add('open');
 }
 function closeRanks(){document.getElementById('ranksOverlay').classList.remove('open')}
+function showResetConfirm(){document.getElementById('resetOverlay').classList.add('open')}
+function closeReset(){document.getElementById('resetOverlay').classList.remove('open')}
+async function confirmReset(){
+  closeReset();
+  setSyncDot('syncing');
+  await sb.from('tasks').delete().neq('id', -1);
+  player = {id:'mouad', xp:0, level:1, totalXp:0, streakCount:0, streakLastDate:'', streakHistory:[]};
+  await sb.from('player').upsert(player);
+  awardedTasks.clear();
+  tasks = [];
+  render(); renderPlayer();
+  setSyncDot('ok');
+  const b = document.getElementById('levelupBanner');
+  b.textContent = '🔄 Progress reset — back to Level 1. Lets go again!';
+  b.classList.add('show');
+  setTimeout(()=>b.classList.remove('show'), 3000);
+}
 
 function formatDate(d){
   if(!d) return null;
@@ -540,7 +569,9 @@ function render(){
   const pct=total?Math.round(done/total*100):0;
   document.getElementById('progressBar').style.width=pct+'%';
   document.getElementById('progressTxt').textContent=pct+'% complete'+(pct===100&&total>0?' 🎉':'');
+  const today = new Date().toISOString().split('T')[0];
   let filtered=tasks.filter(t=>{
+    if(t.recurring && t.due && t.due > today) return false;
     if(q&&!t.text.toLowerCase().includes(q)) return false;
     if(filter==='active') return !t.done;
     if(filter==='done') return t.done;
