@@ -303,10 +303,12 @@ function setSyncDot(s){
 // ---- SUPABASE CRUD ----
 async function loadAll(){
   document.getElementById('loadingTxt').textContent = 'Loading your quests...';
-  const {data:t} = await sb.from('tasks').select('*').order('id', {ascending:false});
+  const {data:t, error:te} = await sb.from('tasks').select('*').order('id', {ascending:false});
+  console.log('tasks:', t, 'error:', te);
   if(t) tasks = t;
-  const {data:p} = await sb.from('player').select('*').eq('id','mouad').single();
-  if(p) player = p;
+  const {data:p, error:pe} = await sb.from('player').select('*').eq('id','mouad');
+  console.log('player:', p, 'error:', pe);
+  if(p && p.length > 0) player = p[0];
   render(); renderPlayer();
   document.getElementById('loadingScreen').style.display = 'none';
   document.getElementById('app').style.display = 'block';
@@ -314,23 +316,34 @@ async function loadAll(){
 }
 
 function subscribeRealtime(){
-  sb.channel('tasks-channel')
-    .on('postgres_changes',{event:'*',schema:'public',table:'tasks'}, payload => {
-      if(payload.eventType==='INSERT') tasks.unshift(payload.new);
-      else if(payload.eventType==='UPDATE') tasks = tasks.map(t=>t.id===payload.new.id?payload.new:t);
-      else if(payload.eventType==='DELETE') tasks = tasks.filter(t=>t.id!==payload.old.id);
+  sb.channel('db-changes')
+    .on('postgres_changes',{event:'INSERT',schema:'public',table:'tasks'}, payload => {
+      if(!tasks.find(t=>t.id===payload.new.id)) tasks.unshift(payload.new);
+      render();
+    })
+    .on('postgres_changes',{event:'UPDATE',schema:'public',table:'tasks'}, payload => {
+      tasks = tasks.map(t=>t.id===payload.new.id?payload.new:t);
+      render();
+    })
+    .on('postgres_changes',{event:'DELETE',schema:'public',table:'tasks'}, payload => {
+      tasks = tasks.filter(t=>t.id!==payload.old.id);
       render();
     })
     .on('postgres_changes',{event:'*',schema:'public',table:'player'}, payload => {
-      if(payload.new) { player = payload.new; renderPlayer(); }
+      if(payload.new){ player=payload.new; renderPlayer(); }
     })
-    .subscribe();
+    .subscribe(status => {
+      if(status==='SUBSCRIBED') setSyncDot('ok');
+    });
 }
 
 async function saveTask(t){
   setSyncDot('syncing');
-  const {error} = await sb.from('tasks').upsert(t);
+  const {data, error} = await sb.from('tasks').upsert(t).select();
+  console.log('saveTask:', data, error);
   setSyncDot(error?'error':'ok');
+  const {data:fresh} = await sb.from('tasks').select('*').order('id',{ascending:false});
+  if(fresh){ tasks=fresh; render(); }
 }
 
 async function removeTask(id){
