@@ -294,6 +294,7 @@ let tasks = [];
 let player = {id:'mouad', xp:0, level:1, totalXp:0, streakCount:0, streakLastDate:'', streakHistory:[]};
 let filter = 'all';
 let light = false;
+let awardedTasks = new Set();
 
 function setSyncDot(s){
   const d = document.getElementById('syncDot');
@@ -350,10 +351,14 @@ async function removeTask(id){
   setSyncDot('syncing');
   const {error} = await sb.from('tasks').delete().eq('id',id);
   setSyncDot(error?'error':'ok');
+  const {data:fresh} = await sb.from('tasks').select('*').order('id',{ascending:false});
+  if(fresh){ tasks=fresh; render(); }
 }
 
 async function savePlayer(){
   await sb.from('player').upsert(player);
+  const {data:p} = await sb.from('player').select('*').eq('id','mouad');
+  if(p && p.length > 0){ player = p[0]; renderPlayer(); }
 }
 
 // ---- RPG ----
@@ -363,6 +368,26 @@ function getXpForLevel(l){
   if(!next) return 9999;
   const cur=RANKS.find(r=>r.lvl===l);
   return next.xpNeeded-(cur?cur.xpNeeded:0);
+}
+
+function removeXP(amount, el){
+  const mult = player.streakCount>1 ? 1+Math.min(player.streakCount*0.2,1) : 1;
+  const xp = Math.round(amount*mult);
+  player.xp -= xp; player.totalXp -= xp;
+  if(player.xp < 0){
+    if(player.level > 1){ player.level--; player.xp = getXpForLevel(player.level) + player.xp; }
+    else player.xp = 0;
+  }
+  if(player.totalXp < 0) player.totalXp = 0;
+  const popup = document.createElement('div');
+  popup.className = 'xp-popup';
+  popup.textContent = '-'+xp+' XP';
+  popup.style.color = '#D85A30';
+  const rect = el?el.getBoundingClientRect():{left:window.innerWidth/2,top:window.innerHeight/2};
+  popup.style.cssText += `;left:${rect.left+10}px;top:${rect.top-10+window.scrollY}px`;
+  document.body.appendChild(popup);
+  setTimeout(()=>popup.remove(),1000);
+  savePlayer();
 }
 
 function awardXP(amount, el){
@@ -442,8 +467,10 @@ async function addTask(){
 async function toggleDone(id, el){
   const t = tasks.find(t=>t.id===id);
   if(!t) return;
+  const wasDone = t.done;
   t.done = !t.done;
-  if(t.done){ awardXP(XP_MAP[t.priority]||20, el); checkStreak(); }
+  if(t.done && !wasDone && !awardedTasks.has(id)){ awardedTasks.add(id); awardXP(XP_MAP[t.priority]||20, el); checkStreak(); }
+  if(!t.done && awardedTasks.has(id)){ awardedTasks.delete(id); removeXP(XP_MAP[t.priority]||20, el); }
   if(t.done && t.recurring){
     setTimeout(async()=>{
       t.done=false;
