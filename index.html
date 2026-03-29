@@ -164,7 +164,7 @@ html,body{min-height:100%;background:var(--bg);color:var(--text);font-family:'Nu
 </head>
 <body>
 <!-- Auth Screen -->
-<div id="authScreen" class="auth-screen">
+<div id="authScreen" class="auth-screen" style="display:none">
   <div class="auth-logo">TaskQuest</div>
   <div class="auth-sub">Your RPG productivity app ⚔️</div>
   <div class="auth-card">
@@ -349,19 +349,30 @@ let authMode = 'signin';
 
 // ---- AUTH ----
 async function checkAuth(){
-  const {data:{session}} = await sb.auth.getSession();
-  if(session){
-    currentUser = session.user;
-    showApp();
-  } else {
-    document.getElementById('authScreen').style.display = 'flex';
+  document.getElementById('loadingScreen').style.display = 'flex';
+  document.getElementById('authScreen').style.display = 'none';
+  document.getElementById('app').style.display = 'none';
+  try {
+    const {data:{session}, error} = await sb.auth.getSession();
+    console.log('session:', session, 'error:', error);
+    if(session && session.user){
+      currentUser = session.user;
+      document.getElementById('loadingScreen').style.display = 'none';
+      showApp();
+    } else {
+      document.getElementById('loadingScreen').style.display = 'none';
+      document.getElementById('authScreen').style.display = 'flex';
+    }
+  } catch(e){
+    console.error('checkAuth error:', e);
     document.getElementById('loadingScreen').style.display = 'none';
+    document.getElementById('authScreen').style.display = 'flex';
   }
 }
 
 function showApp(){
   document.getElementById('authScreen').style.display = 'none';
-  checkAuth();
+  loadAll();
 }
 
 async function signInGoogle(){
