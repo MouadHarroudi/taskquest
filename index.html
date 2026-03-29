@@ -144,9 +144,43 @@ html,body{min-height:100%;background:var(--bg);color:var(--text);font-family:'Nu
 .rank-xp-range{font-size:11px;color:var(--text3)}
 .rank-current{background:var(--bg3);border-radius:8px;padding:2px 8px;font-size:11px;font-weight:700;color:var(--accent)}
 .close-ranks{width:100%;background:var(--bg3);border:0.5px solid var(--border2);border-radius:10px;padding:11px;font-size:14px;font-weight:700;cursor:pointer;color:var(--text2);font-family:'Nunito',sans-serif;margin-top:1rem}
+
+.auth-screen{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:300;padding:2rem;gap:16px}
+.auth-logo{font-size:32px;font-weight:900;background:linear-gradient(90deg,#7F77DD,#D4537E);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:8px}
+.auth-sub{font-size:13px;color:var(--text3);font-weight:600;margin-bottom:1rem;text-align:center}
+.auth-card{background:var(--bg2);border:0.5px solid var(--border2);border-radius:20px;padding:1.5rem;width:100%;max-width:360px;display:flex;flex-direction:column;gap:12px}
+.auth-input{width:100%;background:var(--bg3);border:0.5px solid var(--border2);border-radius:10px;padding:12px 14px;font-size:14px;color:var(--text);outline:none;font-family:'Nunito',sans-serif;font-weight:600}
+.auth-input::placeholder{color:var(--text3)}
+.auth-btn{width:100%;border:none;border-radius:10px;padding:13px;font-size:14px;font-weight:800;cursor:pointer;font-family:'Nunito',sans-serif;transition:all .15s}
+.auth-btn:active{scale:.97}
+.btn-primary{background:linear-gradient(135deg,#7F77DD,#D4537E);color:#fff}
+.btn-google{background:var(--bg3);color:var(--text);border:0.5px solid var(--border2)!important;display:flex;align-items:center;justify-content:center;gap:8px}
+.auth-divider{display:flex;align-items:center;gap:8px;color:var(--text3);font-size:12px}
+.auth-divider::before,.auth-divider::after{content:'';flex:1;height:0.5px;background:var(--border)}
+.auth-switch{font-size:12px;color:var(--text3);text-align:center;cursor:pointer}
+.auth-switch span{color:var(--accent);font-weight:700}
+.auth-error{font-size:12px;color:#D85A30;text-align:center;font-weight:600;display:none}
 </style>
 </head>
 <body>
+<!-- Auth Screen -->
+<div id="authScreen" class="auth-screen">
+  <div class="auth-logo">TaskQuest</div>
+  <div class="auth-sub">Your RPG productivity app ⚔️</div>
+  <div class="auth-card">
+    <button class="auth-btn btn-google" onclick="signInGoogle()">
+      <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20H24v8h11.3C33.6 33.1 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3 0 5.8 1.1 7.9 3l5.7-5.7C34.1 6.5 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20c11 0 19.7-8 19.7-20 0-1.3-.1-2.7-.1-4z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.5 15.1 18.9 12 24 12c3 0 5.8 1.1 7.9 3l5.7-5.7C34.1 6.5 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-1.9 13.5-5l-6.2-5.2C29.4 35.6 26.8 36 24 36c-5.2 0-9.5-2.9-11.3-7L6 33.8C9.3 39.6 16.1 44 24 44z"/><path fill="#1976D2" d="M43.6 20H24v8h11.3c-.9 2.4-2.5 4.4-4.6 5.8l6.2 5.2C40.8 35.7 44 30.3 44 24c0-1.3-.1-2.7-.4-4z"/></svg>
+      Continue with Google
+    </button>
+    <div class="auth-divider">or</div>
+    <input class="auth-input" id="authEmail" type="email" placeholder="Email address">
+    <input class="auth-input" id="authPassword" type="password" placeholder="Password">
+    <div class="auth-error" id="authError"></div>
+    <button class="auth-btn btn-primary" id="authMainBtn" onclick="signInEmail()">Sign in</button>
+    <div class="auth-switch" id="authSwitch">Don't have an account? <span onclick="toggleAuthMode()">Sign up</span></div>
+  </div>
+</div>
+
 <div id="loadingScreen" class="loading">
   <div class="loading-logo">TaskQuest</div>
   <div class="loading-spinner"></div>
@@ -165,6 +199,7 @@ html,body{min-height:100%;background:var(--bg);color:var(--text);font-family:'Nu
         </div>
         <div class="icon-btn" onclick="showRanks()">🏆</div>
         <div class="icon-btn" onclick="showResetConfirm()">🔄</div>
+        <div class="icon-btn" onclick="signOut()" title="Sign out">🚪</div>
         <div class="icon-btn" onclick="toggleTheme()">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/></svg>
         </div>
@@ -305,10 +340,87 @@ const catColorsLight = {
 };
 
 let tasks = [];
-let player = {id:'mouad', xp:0, level:1, totalXp:0, streakCount:0, streakLastDate:'', streakHistory:[]};
+let player = {id:'', xp:0, level:1, totalXp:0, streakCount:0, streakLastDate:'', streakHistory:[]};
 let filter = 'all';
 let light = false;
 let awardedTasks = new Set();
+let currentUser = null;
+let authMode = 'signin';
+
+// ---- AUTH ----
+async function checkAuth(){
+  const {data:{session}} = await sb.auth.getSession();
+  if(session){
+    currentUser = session.user;
+    showApp();
+  } else {
+    document.getElementById('authScreen').style.display = 'flex';
+    document.getElementById('loadingScreen').style.display = 'none';
+  }
+}
+
+function showApp(){
+  document.getElementById('authScreen').style.display = 'none';
+  checkAuth();
+}
+
+async function signInGoogle(){
+  const {error} = await sb.auth.signInWithOAuth({
+    provider: 'google',
+    options:{redirectTo: 'https://taskquest-tau.vercel.app'}
+  });
+  if(error) showAuthError(error.message);
+}
+
+async function signInEmail(){
+  const email = document.getElementById('authEmail').value.trim();
+  const password = document.getElementById('authPassword').value.trim();
+  if(!email || !password) return showAuthError('Please fill in all fields');
+  if(authMode === 'signin'){
+    const {data, error} = await sb.auth.signInWithPassword({email, password});
+    if(error) return showAuthError(error.message);
+    currentUser = data.user;
+    showApp();
+  } else {
+    const {data, error} = await sb.auth.signUp({email, password});
+    if(error) return showAuthError(error.message);
+    showAuthError('Check your email to confirm your account!');
+  }
+}
+
+function toggleAuthMode(){
+  authMode = authMode === 'signin' ? 'signup' : 'signin';
+  document.getElementById('authMainBtn').textContent = authMode === 'signin' ? 'Sign in' : 'Sign up';
+  document.getElementById('authMainBtn').onclick = signInEmail;
+  document.getElementById('authSwitch').innerHTML = authMode === 'signin' ?
+    'Don\'t have an account? <span onclick="toggleAuthMode()">Sign up</span>' :
+    'Already have an account? <span onclick="toggleAuthMode()">Sign in</span>';
+}
+
+function showAuthError(msg){
+  const el = document.getElementById('authError');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+async function signOut(){
+  await sb.auth.signOut();
+  currentUser = null;
+  tasks = [];
+  player = {id:'', xp:0, level:1, totalXp:0, streakCount:0, streakLastDate:'', streakHistory:[]};
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('authScreen').style.display = 'flex';
+}
+
+sb.auth.onAuthStateChange((event, session) => {
+  if(event === 'SIGNED_IN' && session){
+    currentUser = session.user;
+    if(document.getElementById('app').style.display === 'none' &&
+       document.getElementById('authScreen').style.display !== 'none'){
+      showApp();
+    }
+  }
+});
 
 function setSyncDot(s){
   const d = document.getElementById('syncDot');
@@ -317,13 +429,17 @@ function setSyncDot(s){
 
 // ---- SUPABASE CRUD ----
 async function loadAll(){
+  document.getElementById('loadingScreen').style.display = 'flex';
   document.getElementById('loadingTxt').textContent = 'Loading your quests...';
-  const {data:t, error:te} = await sb.from('tasks').select('*').order('id', {ascending:false});
-  console.log('tasks:', t, 'error:', te);
+  const uid = currentUser.id;
+  const {data:t} = await sb.from('tasks').select('*').eq('user_id', uid).order('id', {ascending:false});
   if(t) tasks = t;
-  const {data:p, error:pe} = await sb.from('player').select('*').eq('id','mouad');
-  console.log('player:', p, 'error:', pe);
-  if(p && p.length > 0) player = p[0];
+  const {data:p} = await sb.from('player').select('*').eq('id', uid);
+  if(p && p.length > 0){ player = p[0]; }
+  else {
+    player = {id:uid, xp:0, level:1, totalXp:0, streakCount:0, streakLastDate:'', streakHistory:[]};
+    await sb.from('player').upsert(player);
+  }
   render(); renderPlayer();
   document.getElementById('loadingScreen').style.display = 'none';
   document.getElementById('app').style.display = 'block';
@@ -354,24 +470,25 @@ function subscribeRealtime(){
 
 async function saveTask(t){
   setSyncDot('syncing');
+  t.user_id = currentUser.id;
   const {data, error} = await sb.from('tasks').upsert(t).select();
-  console.log('saveTask:', data, error);
   setSyncDot(error?'error':'ok');
-  const {data:fresh} = await sb.from('tasks').select('*').order('id',{ascending:false});
+  const {data:fresh} = await sb.from('tasks').select('*').eq('user_id', currentUser.id).order('id',{ascending:false});
   if(fresh){ tasks=fresh; render(); }
 }
 
 async function removeTask(id){
   setSyncDot('syncing');
-  const {error} = await sb.from('tasks').delete().eq('id',id);
+  const {error} = await sb.from('tasks').delete().eq('id',id).eq('user_id', currentUser.id);
   setSyncDot(error?'error':'ok');
-  const {data:fresh} = await sb.from('tasks').select('*').order('id',{ascending:false});
+  const {data:fresh} = await sb.from('tasks').select('*').eq('user_id', currentUser.id).order('id',{ascending:false});
   if(fresh){ tasks=fresh; render(); }
 }
 
 async function savePlayer(){
+  player.id = currentUser.id;
   await sb.from('player').upsert(player);
-  const {data:p} = await sb.from('player').select('*').eq('id','mouad');
+  const {data:p} = await sb.from('player').select('*').eq('id', currentUser.id);
   if(p && p.length > 0){ player = p[0]; renderPlayer(); }
 }
 
@@ -539,8 +656,8 @@ function closeReset(){document.getElementById('resetOverlay').classList.remove('
 async function confirmReset(){
   closeReset();
   setSyncDot('syncing');
-  await sb.from('tasks').delete().neq('id', -1);
-  player = {id:'mouad', xp:0, level:1, totalXp:0, streakCount:0, streakLastDate:'', streakHistory:[]};
+  await sb.from('tasks').delete().eq('user_id', currentUser.id);
+  player = {id:currentUser.id, xp:0, level:1, totalXp:0, streakCount:0, streakLastDate:'', streakHistory:[]};
   await sb.from('player').upsert(player);
   awardedTasks.clear();
   tasks = [];
@@ -625,7 +742,7 @@ function render(){
   });
 }
 
-loadAll();
+checkAuth();
 </script>
 </body>
 </html>
